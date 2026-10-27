@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LudoraX — Modern Ludo</title>
+<style>
+:root{--bg:#101426;--panel:#1a2038;--ink:#f5f7ff;--muted:#aab3d1;--red:#ff5364;--green:#3ed6a0;--yellow:#ffd34f;--blue:#56a6ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#252d50,#101426 60%);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);min-height:100vh}
+button{font:inherit;cursor:pointer;border:0}
+.app{max-width:1050px;margin:auto;padding:18px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.brand{font-size:clamp(1.5rem,5vw,2.25rem);font-weight:900;letter-spacing:-1px}.brand span{color:var(--yellow)}.tag{color:var(--muted);font-size:.8rem}
+.pill{background:#252c49;border:1px solid #3a456d;color:var(--ink);padding:9px 13px;border-radius:99px}
+.layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(270px,.85fr);gap:16px;align-items:start}
+.panel{background:rgba(26,32,56,.94);border:1px solid #303958;border-radius:22px;padding:15px;box-shadow:0 15px 40px #0003}
+.board-wrap{position:relative;width:100%;max-width:620px;margin:auto}
+canvas{display:block;width:100%;height:auto;border-radius:16px;touch-action:manipulation;box-shadow:0 10px 35px #0005}
+h2{margin:0 0 12px;font-size:1.15rem}.status{color:var(--muted);line-height:1.45;font-size:.94rem;min-height:42px}
+.players{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.player{display:flex;align-items:center;gap:9px;padding:10px;border-radius:13px;background:#11172b;border:1px solid transparent;min-width:0}
+.player.active{border-color:#fff8;box-shadow:inset 0 0 0 1px #fff2;background:#29314f}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}.player b{font-size:.88rem}.player small{display:block;color:var(--muted);font-size:.72rem}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.primary{background:linear-gradient(135deg,#ffe17a,#ffb52e);color:#242035;font-weight:900;padding:13px;border-radius:14px;box-shadow:0 5px 0 #a66b18}
+.secondary{background:#2a3353;color:var(--ink);padding:12px;border-radius:14px;border:1px solid #46537c}
+.primary:disabled{opacity:.55;cursor:not-allowed}
+.dice-box{display:flex;align-items:center;gap:12px;padding:12px;background:#11172b;border-radius:15px;margin-top:12px}
+.dice{width:56px;height:56px;background:#fff;color:#20243a;border-radius:13px;display:grid;place-items:center;font-size:2.2rem;box-shadow:inset 0 -4px #d8dce8;flex:none}
+.dice.roll{animation:shake .45s ease}@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(18deg) scale(1.08)}55%{transform:rotate(-18deg) scale(1.08)}}
+.rules{font-size:.84rem;color:var(--muted);line-height:1.55;margin-top:16px}.rules strong{color:var(--ink)}
+.menu{position:fixed;inset:0;background:#0b0e1bd9;display:grid;place-items:center;padding:18px;z-index:5}
+.menu-card{width:min(480px,100%);background:#1a2038;border:1px solid #3c476e;border-radius:26px;padding:24px;box-shadow:0 25px 80px #0008}
+.logo-big{font-size:2.5rem;font-weight:1000;letter-spacing:-2px}.logo-big span{color:var(--yellow)}
+.menu-card p{color:var(--muted);line-height:1.5}.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.choice{padding:13px 10px;border-radius:14px;background:#11172b;border:1px solid #3a456d;color:var(--ink);text-align:left}
+.choice.selected{border-color:var(--yellow);background:#35304a}.choice strong{display:block}.choice small{color:var(--muted)}
+.menu-card .primary{width:100%;margin-top:5px}
+.hidden{display:none!important}.footer{text-align:center;color:#7e89ad;font-size:.75rem;margin:16px 0 4px}
+@media(max-width:760px){.app{padding:12px}.layout{grid-template-columns:1fr}.panel{padding:12px}.board-panel{padding:9px}.right-panel{display:grid;grid-template-columns:1fr}.brand{font-size:1.65rem}.tag{display:none}.players{margin:10px 0}.rules{margin-top:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div><div class="brand">Ludora<span>X</span> 🎲</div><div class="tag">ROLL • RACE • WIN</div></div><button class="pill" id="menuBtn">☰ Menu</button></header>
+<div class="layout">
+<section class="panel board-panel"><div class="board-wrap"><canvas id="board" width="600" height="600" aria-label="LudoraX game board"></canvas></div></section>
+<section class="panel right-panel">
+<h2 id="turnTitle">Welcome to LudoraX</h2><div class="status" id="status">Choose your game mode to begin.</div>
+<div class="players" id="players"></div>
+<div class="dice-box"><div class="dice" id="dice">⚄</div><div><b id="diceLabel">Ready to roll?</b><div class="tag">Roll a six to launch a token</div></div></div>
+<div class="actions"><button class="primary" id="rollBtn" disabled>🎲 Roll Dice</button><button class="secondary" id="resetBtn">↻ New Game</button></div>
+<div class="rules"><strong>How to play</strong><br>• Roll a 6 to bring a token onto the track.<br>• Tap one of your highlighted tokens to move it.<br>• Roll a 6 for another turn.<br>• Land on an opponent to send them home. Safe squares protect tokens.<br>• First player to get all 4 tokens home wins.<br><br><strong>Note:</strong> This is a local pass-and-play version for one device.</div>
+</section></div><div class="footer">LudoraX • Made for fun</div>
+</div>
+<div class="menu" id="menu">
+<div class="menu-card"><div class="logo-big">Ludora<span>X</span> 🎲</div><p>A fresh, colourful Ludo experience. Choose how many people are playing on this device.</p>
+<div class="choices"><button class="choice selected" data-mode="2"><strong>👥 2 Players</strong><small>Red vs Green</small></button><button class="choice" data-mode="3"><strong>👥 3 Players</strong><small>Red, Green, Yellow</small></button><button class="choice" data-mode="4"><strong>👥 4 Players</strong><small>All colours</small></button><button class="choice" data-mode="cpu"><strong>🤖 Vs Computer</strong><small>You vs CPU</small></button></div>
+<button class="primary" id="startBtn">Start Game →</button></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('board'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const colors=[
+{name:'Red',hex:'#ff5364',light:'#ffe0e4',start:0,home:[1,6]},
+{name:'Green',hex:'#3ed6a0',light:'#d8fff0',start:13,home:[1,8]},
+{name:'Yellow',hex:'#ffd34f',light:'#fff3bd',start:26,home:[8,13]},
+{name:'Blue',hex:'#56a6ff',light:'#ddecff',start:39,home:[6,13]}
+];
+const track=[
+[1,6],[2,6],[3,6],[4,6],[5,6],[6,5],[6,4],[6,3],[6,2],[6,1],[6,0],[7,0],
+[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[9,6],[10,6],[11,6],[12,6],[13,6],[14,6],
+[14,7],[14,8],[13,8],[12,8],[11,8],[10,8],[9,8],[8,9],[8,10],[8,11],[8,12],[8,13],
+[8,14],[7,14],[6,14],[6,13],[6,12],[6,11],[6,10],[6,9],[5,8],[4,8],[3,8],[2,8],
+[1,8],[0,8],[0,7],[0,6]
+];
+const safe=[0,8,13,21,26,34,39,47];
+const homePaths=[
+[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],
+[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],
+[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]],
+[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]]
+];
+let mode=2,players=[],current=0,dice=0,rolled=false,gameOver=false,animFrame=0,tokenRects=[],audioCtx=null,canSound=true;
+function makePlayers(m){let count=m==='cpu'?2:Number(m);return Array.from({length:count},(_,i)=>({colorIndex:m==='cpu'&&i===1?2:i,name:m==='cpu'&&i===1?'Computer':colors[i].name,computer:m==='cpu'&&i===1,tokens:[-1,-1,-1,-1],finished:0}));}
+function sound(freq=440,duration=.09){if(!canSound)return;try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=freq;o.type='sine';g.gain.setValueAtTime(.06,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.start();o.stop(audioCtx.currentTime+duration)}catch(e){}}
+function cell(x,y){return {x: x*40+20,y:y*40+20}}
+function roundRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke()}}
+function drawBase(){
+ctx.clearRect(0,0,600,600);ctx.fillStyle='#f8f9ff';ctx.fillRect(0,0,600,600);
+const zones=[{x:0,y:0,c:colors[0]},{x:360,y:0,c:colors[1]},{x:0,y:360,c:colors[3]},{x:360,y:360,c:colors[2]}];
+zones.forEach(z=>{ctx.fillStyle=z.c.hex;ctx.fillRect(z.x,z.y,240,240);ctx.fillStyle='#ffffff24';ctx.fillRect(z.x+12,z.y+12,216,216);roundRect(z.x+40,z.y+40,160,160,18,'#fff','#ffffffaa');for(let i=0;i<4;i++){let tx=z.x+80+(i%2)*80,ty=z.y+80+Math.floor(i/2)*80;ctx.beginPath();ctx.arc(tx,ty,24,0,Math.PI*2);ctx.fillStyle=z.c.light;ctx.fill();ctx.strokeStyle=z.c.hex;ctx.lineWidth=5;ctx.stroke()}});
+track.forEach((p,i)=>{let c=cell(p[0],p[1]);ctx.fillStyle='#fff';ctx.fillRect(c.x-19,c.y-19,38,38);ctx.strokeStyle='#cfd5e6';ctx.lineWidth=1;ctx.strokeRect(c.x-19,c.y-19,38,38);if(safe.includes(i)){ctx.fillStyle='#e5e9f5';ctx.beginPath();ctx.arc(c.x,c.y,11,0,Math.PI*2);ctx.fill();ctx.fillStyle='#737e9f';ctx.font='15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',c.x,c.y+1)}});
+colors.forEach((c,i)=>{let p=cell(...track[c.start]);ctx.fillStyle=c.hex;ctx.beginPath();ctx.arc(p.x,p.y,17,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('➜',p.x,p.y+4)});
+homePaths.forEach((path,i)=>path.forEach((p,j)=>{let c=cell(p[0],p[1]);ctx.fillStyle=colors[i].light;ctx.fillRect(c.x-19,c.y-19,38,38);ctx.strokeStyle=colors[i].hex;ctx.strokeRect(c.x-19,c.y-19,38,38)}));
+ctx.fillStyle='#252c49';ctx.beginPath();ctx.moveTo(240,240);ctx.lineTo(360,240);ctx.lineTo(360,360);ctx.lineTo(240,360);ctx.closePath();ctx.fill();
+ctx.beginPath();ctx.moveTo(240,240);ctx.lineTo(300,300);ctx.lineTo(240,360);ctx.closePath();ctx.fillStyle=colors[0].hex;ctx.fill();
+ctx.beginPath();ctx.moveTo(360,240);ctx.lineTo(300,300);ctx.lineTo(240,240);ctx.closePath();ctx.fillStyle=colors[1].hex;ctx.fill();
+ctx.beginPath();ctx.moveTo(240,360);ctx.lineTo(300,300);ctx.lineTo(360,360);ctx.closePath();ctx.fillStyle=colors[3].hex;ctx.fill();
+ctx.beginPath();ctx.moveTo(360,240);ctx.lineTo(360,360);ctx.lineTo(300,300);ctx.closePath();ctx.fillStyle=colors[2].hex;ctx.fill();
+}
+function tokenPosition(player,idx){
+let pos=player.tokens[idx],ci=player.colorIndex;
+if(pos===-1){let base=[[80,80],[160,80],[80,160],[160,160]][idx];if(ci===1)base=[440+(idx%2)*80,80+Math.floor(idx/2)*80];if(ci===2)base=[440+(idx%2)*80,440+Math.floor(idx/2)*80];if(ci===3)base=[80+(idx%2)*80,440+Math.floor(idx/2)*80];return {x:base[0],y:base[1]}}
+if(pos>=52){let hp=homePaths[ci],k=Math.min(5,pos-52),p=cell(hp[k][0],hp[k][1]);return {x:p.x,y:p.y}}
+let trackIndex=(colors[ci].start+pos)%52,p=cell(track[trackIndex][0],track[trackIndex][1]);return {x:p.x,y:p.y}
+}
+function drawTokens(){
+tokenRects=[];
+players.forEach((pl,pi)=>pl.tokens.forEach((pos,ti)=>{let p=tokenPosition(pl,ti),same=tokenRects.filter(t=>Math.hypot(t.x-p.x,t.y-p.y)<5).length;let ox=same?((same%2)?12:-12):0,oy=same?(Math.floor(same/2)*10):0;p.x+=ox;p.y+=oy;let active=pi===current&&rolled&&legalTokens().includes(ti);ctx.beginPath();ctx.arc(p.x,p.y,active?16:14,0,Math.PI*2);ctx.fillStyle=colors[pl.colorIndex].hex;ctx.fill();ctx.lineWidth=active?4:2;ctx.strokeStyle=active?'#fff':'#26304d';ctx.stroke();ctx.beginPath();ctx.arc(p.x-4,p.y-4,4,0,Math.PI*2);ctx.fillStyle='#ffffffa8';ctx.fill();ctx.fillStyle='#17203a';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ti+1,p.x,p.y+1);tokenRects.push({x:p.x,y:p.y,pi,ti})}));
+}
+function draw(){drawBase();drawTokens()}
+function legalTokens(){if(!rolled||gameOver)return[];return players[current].tokens.map((p,i)=>({p,i})).filter(({p})=>p===-1?dice===6:p<57&&p+dice<=57).map(o=>o.i)}
+function renderPlayers(){
+$('players').innerHTML=players.map((p,i)=>`<div class="player ${i===current&&!gameOver?'active':''}"><span class="dot" style="background:${colors[p.colorIndex].hex}"></span><div><b>${p.name}</b><small>${p.finished}/4 home</small></div></div>`).join('');
+}
+function update(){
+renderPlayers();draw();
+$('rollBtn').disabled=gameOver||rolled||players[current]?.computer;
+$('turnTitle').textContent=gameOver?'🏆 Game Over':`${players[current]?.name||'Player'}’s turn`;
+$('diceLabel').textContent=rolled?`You rolled ${dice} — choose a token`:'Tap Roll Dice to play';
+}
+function nextTurn(extra=false){if(!extra)current=(current+1)%players.length;rolled=false;dice=0;update();if(!gameOver&&players[current].computer)setTimeout(computerTurn,700)}
+function roll(){
+if(rolled||gameOver||players[current].computer)return;
+dice=Math.floor(Math.random()*6)+1;rolled=true;$('dice').textContent=['','⚀','⚁','⚂','⚃','⚄','⚅'][dice];$('dice').classList.remove('roll');void $('dice').offsetWidth;$('dice').classList.add('roll');sound(dice===6?740:420,.14);
+let legal=legalTokens();
+if(!legal.length){$('status').textContent=`Rolled ${dice}. No valid moves${dice===6?' — try again!':'.'}; turn passes.`;update();setTimeout(()=>{if(dice===6){rolled=false;update()}else nextTurn()},850);return}
+$('status').textContent=dice===6?'Great! A six lets you launch a token. Tap a highlighted token.':'Tap one of your highlighted tokens to move it.';
+update();
+}
+function moveToken(ti){
+if(!rolled||!legalTokens().includes(ti))return;
+let pl=players[current],old=pl.tokens[ti];
+pl.tokens[ti]=old===-1?0:old+dice;
+if(pl.tokens[ti]===57){pl.finished++;sound(900,.2)}
+let captured=false;
+if(pl.tokens[ti]<52){
+let abs=(colors[pl.colorIndex].start+pl.tokens[ti])%52;
+if(!safe.includes(abs)){
+players.forEach((other,oi)=>{if(oi===current)return;other.tokens.forEach((op,ot)=>{if(op>=0&&op<52&&(colors[other.colorIndex].start+op)%52===abs){other.tokens[ot]=-1;captured=true}})});
+}}
+if(captured){$('status').textContent='Nice! You captured an opponent token.';sound(300,.2)}else $('status').textContent=`${pl.name} moved token ${ti+1}.`;
+if(pl.finished===4){gameOver=true;$('status').textContent=`🎉 ${pl.name} wins LudoraX!`;sound(1000,.4);update();setTimeout(()=>alert(`🏆 ${pl.name} wins LudoraX!`),100);return}
+let extra=dice===6;nextTurn(extra);
+}
+function computerTurn(){
+if(gameOver||!players[current]?.computer||rolled)return;
+dice=Math.floor(Math.random()*6)+1;rolled=true;$('dice').textContent=['','⚀','⚁','⚂','⚃','⚄','⚅'][dice];$('dice').classList.add('roll');sound(400+dice*50,.1);update();
+let legal=legalTokens();$('status').textContent=`Computer rolled ${dice}.`;
+if(!legal.length){setTimeout(()=>{if(dice===6){rolled=false;update();setTimeout(computerTurn,650)}else nextTurn()},650);return}
+let pick=legal.find(i=>players[current].tokens[i]>=0)||legal[0];
+setTimeout(()=>moveToken(pick),650);
+}
+function startGame(){players=makePlayers(mode);current=0;dice=0;rolled=false;gameOver=false;$('menu').classList.add('hidden');$('status').textContent='Game started! Roll a 6 to launch your first token.';$('dice').textContent='⚄';update();if(players[current].computer)setTimeout(computerTurn,600)}
+function reset(){mode='2';document.querySelectorAll('.choice').forEach(b=>b.classList.toggle('selected',b.dataset.mode==='2'));$('menu').classList.remove('hidden')}
+canvas.addEventListener('click',e=>{
+let rect=canvas.getBoundingClientRect(),x=(e.clientX-rect.left)*600/rect.width,y=(e.clientY-rect.top)*600/rect.height;
+let hits=tokenRects.filter(t=>Math.hypot(t.x-x,t.y-y)<24&&t.pi===current);
+if(hits.length){let hit=hits[hits.length-1];moveToken(hit.ti)}
+});
+$('rollBtn').addEventListener('click',roll);$('resetBtn').addEventListener('click',reset);$('menuBtn').addEventListener('click',reset);$('startBtn').addEventListener('click',startGame);
+document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('.choice').forEach(c=>c.classList.toggle('selected',c===b))}));
+draw();players=makePlayers(2);update();
+})();
+</script>
+</body>
+</html>
